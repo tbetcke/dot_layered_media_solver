@@ -3,7 +3,9 @@ from bempp.lib import *
 
 def initializeContext():
     
-    quadStrategy = createNumericalQuadratureStrategy("float64","complex128")
+    accuracyOptions = createAccuracyOptions()
+    accuracyOptions.doubleRegular.setRelativeQuadratureOrder(2)
+    quadStrategy = createNumericalQuadratureStrategy("float64","complex128",accuracyOptions)
     options = createAssemblyOptions()
     options.switchToAcaMode(createAcaOptions())
     context = createContext(quadStrategy,options)

@@ -83,6 +83,7 @@ class dot_operator(object):
     def matvec(self,x):
         
         @dview.remote(block=True)
+        @interactive 
         def remoteMatVec(data):
             return e.apply(data)
         
@@ -92,7 +93,7 @@ class dot_operator(object):
         else:
             shape = (dim,1)
         xc = np.zeros(shape,dtype='complex128')
-        xc.flat=x[:dim]+1j*x[dim:]
+        xc[:]=x[:dim]+1j*x[dim:]
         data = {}
         result = np.zeros(xc.shape,dtype='complex128')
         for i in range(len(self.dimensions)-1):
@@ -103,27 +104,38 @@ class dot_operator(object):
             result.flat[self.dimensions[i]:self.dimensions[i+1]]+=result_data[i].flat
         return np.vstack([np.real(result),np.imag(result)])
     
-#    def initializeAcaPreconditioner(self,accuracy=1E-3):
-#        
-#        for e in self.evaluators: e.initializeAcaPreconditioner(accuracy)
+    def initializeAcaPreconditioner(self,accuracy=1E-3):
+        
+        @dview.remote(block=True)
+        @interactive
+        def reallyInitializeAcaPreconditioner(accuracy):
+            e.initializeAcaPreconditioner(accuracy)
+
+        reallyInitializeAcaPreconditioner(accuracy)
 #    
-#    def applyAcaPreconditioner(self,x):
-#
-#        dim = self.dimensions[-1]
-#        if len(x.shape) ==1:
-#            shape = (dim,)
-#        else:
-#            shape = (dim,1)
-#        xc = np.zeros(shape,dtype='complex128')
-#        xc.flat=x[:dim]+1j*x[dim:]
-#        data = {}
-#        result = np.zeros(xc.shape,dtype='complex128')
-#        for i in range(len(self.dimensions)-1):
-#            data[i]=xc.flat[self.dimensions[i]:self.dimensions[i+1]]
-#            data[i].shape=(len(data[i]),1)
-#        for i in range(len(self.evaluators)):
-#            result.flat[self.dimensions[i]:self.dimensions[i+1]]+=self.evaluators[i].applyAcaPreconditioner(data).flat
-#        return np.vstack([np.real(result),np.imag(result)])
+    def applyAcaPreconditioner(self,x):
+
+        @dview.remote(block=True)
+        @interactive 
+        def remoteApplyAcaPreconditioner(data):
+            return e.applyAcaPreconditioner(data)
+        
+        dim = self.dimensions[-1]
+        if len(x.shape) ==1:
+            shape = (dim,)
+        else:
+            shape = (dim,1)
+        xc = np.zeros(shape,dtype='complex128')
+        xc[:]=x[:dim]+1j*x[dim:]
+        data = {}
+        result = np.zeros(xc.shape,dtype='complex128')
+        for i in range(len(self.dimensions)-1):
+            data[i]=xc.flat[self.dimensions[i]:self.dimensions[i+1]]
+            data[i].shape=(len(data[i]),1)
+        result_data = remoteApplyAcaPreconditioner(data)
+        for i in self.rc.ids:
+            result.flat[self.dimensions[i]:self.dimensions[i+1]]+=result_data[i].flat
+        return np.vstack([np.real(result),np.imag(result)])
         
 
     def getRhs(self,evalFun):

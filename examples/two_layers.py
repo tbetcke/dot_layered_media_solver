@@ -43,7 +43,7 @@ w2 = np.sqrt(mua2/kappa2+1j*omega/(c*kappa2))
 
 r1 = 2.5
 r2 = 1.5
-element_size = .5
+element_size = .3
 gmsh_command = "/Applications/Gmsh.app/Contents/MacOS/gmsh"
 sphere_definition = "sphere.txt"
 
@@ -83,6 +83,33 @@ dot.initializeTree()
 dot.addTreeLayer(1,0)
 dot.initEvaluators.map(dot.rc.ids)
 
+operator = dot.dot_operator()
+prec = dot.AcaPreconditioner(operator,1E-1)
+
+data = operator.getRhs(evalBoundaryData)
+
+class ResidualStorage(object):
+    
+    def __init__(self):
+        self.resvec=[]
+        
+    def __call__(self,r):
+        
+        self.resvec.append(np.linalg.norm(r))
+
+res_caller = ResidualStorage()
+        
+from scipy.sparse.linalg import gmres
+
+x,info = gmres(operator,data,M=prec,tol=1E-10,callback=res_caller)
+dim = operator.dimensions[-1]
+result = x[:dim]+1j*x[dim:]
+print result
+print info
+
+from matplotlib import pyplot as plt
+plt.semilogy(res_caller.resvec)
+plt.show()
 
 
 #outer = Layer(s1_msh_name,0.01,1.,omega,c,0)
@@ -92,34 +119,29 @@ dot.initEvaluators.map(dot.rc.ids)
 #tree.add_layer(inner,outer)
 
 
-operator = dot.dot_operator()
-print operator.dimensions
-print operator.shape
-
-# Generate a right-hand side
-
-
-data = operator.getRhs(evalBoundaryData)
-print data
-#print len(data)
+#
+#print operator.dimensions
+#print operator.shape
+#
+## Generate a right-hand side
+#
+#
+#data = operator.getRhs(evalBoundaryData)
+#
 #
 #v = np.ones((operator.shape[0],1))
 #b = operator.matvec(v)
-##print b
+#print b
 #
-#prec = AcaPreconditioner(operator)
-#b2 = prec.matvec(v)
-##print b2
 #
+#
+#
+#
+##
 ## Solve the system
 #
-#from scipy.sparse.linalg import gmres
+## Deal with the residual
 #
-#x,info = gmres(operator,data,M=prec)
-#dim = operator.dimensions[-1]
-#result = x[:dim]+1j*x[dim:]
-#print result
-#print info
 
 
 
