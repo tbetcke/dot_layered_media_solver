@@ -80,26 +80,34 @@ class dot_operator(object):
         self.dimensions = np.insert(self.dimensions,0,0)
         self.shape = (2*self.dimensions[-1],2*self.dimensions[-1])
         
+    def splitVector(self,x):
+        
+        dim = self.dimensions[-1]
+        xc = np.zeros(self.getCorrectShape(x),dtype='complex128')
+        xc[:]=x[:dim]+1j*x[dim:]
+        data = {}
+        for i in range(len(self.dimensions)-1):
+            data[i]=xc.flat[self.dimensions[i]:self.dimensions[i+1]]
+            data[i].shape=(len(data[i]),1)
+        return data
+        
+    def getCorrectShape(self,x):
+        dim = self.dimensions[-1]
+        if len(x.shape) == 1:
+            shape = (dim,)
+        else:
+            shape = (dim,1)
+        return shape
+        
     def matvec(self,x):
         
         @dview.remote(block=True)
         @interactive 
         def remoteMatVec(data):
             return e.apply(data)
-        
-        dim = self.dimensions[-1]
-        if len(x.shape) ==1:
-            shape = (dim,)
-        else:
-            shape = (dim,1)
-        xc = np.zeros(shape,dtype='complex128')
-        xc[:]=x[:dim]+1j*x[dim:]
-        data = {}
-        result = np.zeros(xc.shape,dtype='complex128')
-        for i in range(len(self.dimensions)-1):
-            data[i]=xc.flat[self.dimensions[i]:self.dimensions[i+1]]
-            data[i].shape=(len(data[i]),1)
+        data = self.splitVector(x)
         result_data = remoteMatVec(data)
+        result = np.zeros(self.getCorrectShape(x),dtype='complex128')
         for i in self.rc.ids:
             result.flat[self.dimensions[i]:self.dimensions[i+1]]+=result_data[i].flat
         return np.vstack([np.real(result),np.imag(result)])
@@ -120,23 +128,22 @@ class dot_operator(object):
         def remoteApplyAcaPreconditioner(data):
             return e.applyAcaPreconditioner(data)
         
-        dim = self.dimensions[-1]
-        if len(x.shape) ==1:
-            shape = (dim,)
-        else:
-            shape = (dim,1)
-        xc = np.zeros(shape,dtype='complex128')
-        xc[:]=x[:dim]+1j*x[dim:]
-        data = {}
-        result = np.zeros(xc.shape,dtype='complex128')
-        for i in range(len(self.dimensions)-1):
-            data[i]=xc.flat[self.dimensions[i]:self.dimensions[i+1]]
-            data[i].shape=(len(data[i]),1)
+        data = self.splitVector(x)
         result_data = remoteApplyAcaPreconditioner(data)
+        result = np.zeros(self.getCorrectShape(x),dtype='complex128')
         for i in self.rc.ids:
             result.flat[self.dimensions[i]:self.dimensions[i+1]]+=result_data[i].flat
         return np.vstack([np.real(result),np.imag(result)])
         
+
+    def saveResult(self,x):
+        
+        @dview.remote(block=True)
+        @interactive
+        def remoteSaveResult(data):
+            e.saveResult(data)
+            
+        remoteSaveResult(self.splitVector(x))
 
     def getRhs(self,evalFun):
         

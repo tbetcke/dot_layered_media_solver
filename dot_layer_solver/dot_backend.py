@@ -193,6 +193,18 @@ class Evaluator(object):
         fun = createGridFunction(self.context,self.spaces[layer_id]['neumann'],self.spaces[layer_id]['dirichlet'],evalFun)        
         data = fun.projections()
         return data
+  
+    def saveResult(self,coefficient_data):
+        
+        layer_id = self.layer.id
+        
+        coeffs_dirichlet = coefficient_data[layer_id][:self.dofs[layer_id]['dirichlet']].flat
+        coeffs_neumann = coefficient_data[layer_id][self.dofs[layer_id]['dirichlet']:].flat
+        gridFun_dirichlet = createGridFunction(self.context,self.spaces[layer_id]['dirichlet'],self.spaces[layer_id]['neumann'],coefficients=coeffs_dirichlet)
+        gridFun_neumann = createGridFunction(self.context,self.spaces[layer_id]['neumann'],self.spaces[layer_id]['dirichlet'],coefficients=coeffs_neumann)        
+        gridFun_neumann.exportToVtk("cell_data","neumann_data","v"+str(layer_id))
+        gridFun_dirichlet.exportToVtk("cell_data","dirichlet_data","u"+str(layer_id))
+        
                 
     def apply(self,data):
 
@@ -219,6 +231,7 @@ class Evaluator(object):
             self.precond = [m00,m11]
                         
     def applyAcaPreconditioner(self,data):
+        
         localData = data[self.layer.id]
         offsets = np.insert(np.cumsum([self.precond[0].rowCount(),self.precond[1].rowCount()]),0,0)
         result = np.zeros(localData.shape,dtype='complex128')
