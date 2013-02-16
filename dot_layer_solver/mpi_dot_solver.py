@@ -629,13 +629,14 @@ if __name__=="__main__":
     freq = 100e6
     omega = 2*np.pi*freq*1E-12
     alpha = 2.7439
-    h=.3
+    h=.1
 
     wavenumbers,kappas = compute_wavenumbers_kappas(mua,mus,c,omega)
 
     graph = {0:[1,2]}
-    radii = [2.5, 1.5 1.]
-    layer_grids = [shapes.sphere(radius=radii[i],h=h) for i in range(len(radii))]
+    radii = [1., .2, .2]
+    origins = [(0,0,0),(0,-.3,0),(0,.3,0.)]
+    layer_grids = [shapes.sphere(radius=radii[i],origin=origins[i],h=h) for i in range(len(radii))]
 
     context = initialize_context()
     layers = initialize_layers(context,graph,layer_grids,wavenumbers,kappas)
